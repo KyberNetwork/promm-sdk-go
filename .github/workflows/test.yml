@@ -13,5 +13,7 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: update lib
+        run: go mod tidy
       - name: Test
         run: go test -v ./entities -run TestGetOutputAmount
