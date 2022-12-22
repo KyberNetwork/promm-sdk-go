@@ -44,12 +44,12 @@ type IncreaseSpecificOptions struct {
 	TokenID *big.Int // Indicates the ID of the position to increase liquidity for
 }
 
-//  Options for producing the calldata to add liquidity
+// Options for producing the calldata to add liquidity
 type CommonAddLiquidityOptions struct {
-	SlippageTolerance *core.Percent  // How much the pool price is allowed to move
-	Deadline          *big.Int       // When the transaction expires, in epoch seconds
-	UseNative         *core.Currency // Whether to spend ether. If true, one of the pool tokens must be WETH, by default false
-	NativeToken       *core.Token    // TODO: merge this with UseNative
+	SlippageTolerance *core.Percent      // How much the pool price is allowed to move
+	Deadline          *big.Int           // When the transaction expires, in epoch seconds
+	UseNative         *core.BaseCurrency // Whether to spend ether. If true, one of the pool tokens must be WETH, by default false
+	NativeToken       *core.Token        // TODO: merge this with UseNative
 
 	Token0Permit *PermitOptions // The optional permit parameters for spending token0
 	Token1Permit *PermitOptions // The optional permit parameters for spending token1
@@ -245,11 +245,11 @@ func AddCallParameters(position *entities.Position, opts *AddLiquidityOptions) (
 
 	value := constants.Zero
 	if opts.UseNative != nil {
-		if !position.Pool.Token0.Equals(opts.NativeToken) && !position.Pool.Token1.Equals(opts.NativeToken) {
+		if !position.Pool.Token0.Equal(opts.NativeToken) && !position.Pool.Token1.Equal(opts.NativeToken) {
 			return nil, ErrNoWETH
 		}
 
-		if position.Pool.Token0.Equals(opts.NativeToken) {
+		if position.Pool.Token0.Equal(opts.NativeToken) {
 			value = amount0Desired
 		} else {
 			value = amount1Desired
@@ -275,7 +275,7 @@ func AddCallParameters(position *entities.Position, opts *AddLiquidityOptions) (
 func encodeCollect(opts *CollectOptions) ([][]byte, error) {
 	var calldatas [][]byte
 
-	involvesETH := opts.ExpectedCurrencyOwed0.Currency.IsNative || opts.ExpectedCurrencyOwed1.Currency.IsNative
+	involvesETH := opts.ExpectedCurrencyOwed0.Currency.IsNative() || opts.ExpectedCurrencyOwed1.Currency.IsNative()
 
 	// collect
 	abi := getNonFungiblePositionManagerABI()
@@ -300,7 +300,7 @@ func encodeCollect(opts *CollectOptions) ([][]byte, error) {
 			token       *core.Token
 			tokenAmount *big.Int
 		)
-		if opts.ExpectedCurrencyOwed0.Currency.IsNative {
+		if opts.ExpectedCurrencyOwed0.Currency.IsNative() {
 			ethAmount = opts.ExpectedCurrencyOwed0.Quotient()
 			token = opts.ExpectedTokenOwed1
 			tokenAmount = opts.ExpectedCurrencyOwed1.Quotient()

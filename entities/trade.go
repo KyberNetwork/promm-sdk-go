@@ -212,7 +212,7 @@ func FromRoute(route *Route, amount *entities.CurrencyAmount, tradeType entities
 		err          error
 	)
 	if tradeType == entities.ExactInput {
-		if !amount.Currency.Equal(route.Input.Currency) {
+		if !amount.Currency.Equal(route.Input) {
 			return nil, ErrInvalidAmountForRoute
 		}
 		amounts[0] = amount
@@ -224,10 +224,10 @@ func FromRoute(route *Route, amount *entities.CurrencyAmount, tradeType entities
 			}
 			amounts[i+1] = outputAmount
 		}
-		inputAmount = entities.FromFractionalAmount(route.Input.Currency, amount.Numerator, amount.Denominator)
-		outputAmount = entities.FromFractionalAmount(route.Output.Currency, amounts[len(amounts)-1].Numerator, amounts[len(amounts)-1].Denominator)
+		inputAmount = entities.FromFractionalAmount(route.Input, amount.Numerator, amount.Denominator)
+		outputAmount = entities.FromFractionalAmount(route.Output, amounts[len(amounts)-1].Numerator, amounts[len(amounts)-1].Denominator)
 	} else {
-		if !amount.Currency.Equal(route.Output.Currency) {
+		if !amount.Currency.Equal(route.Output) {
 			return nil, ErrInvalidAmountForRoute
 		}
 		amounts[len(amounts)-1] = amount
@@ -239,8 +239,8 @@ func FromRoute(route *Route, amount *entities.CurrencyAmount, tradeType entities
 			}
 			amounts[i-1] = inputAmount
 		}
-		inputAmount = entities.FromFractionalAmount(route.Input.Currency, amounts[0].Numerator, amounts[0].Denominator)
-		outputAmount = entities.FromFractionalAmount(route.Output.Currency, amount.Numerator, amount.Denominator)
+		inputAmount = entities.FromFractionalAmount(route.Input, amounts[0].Numerator, amounts[0].Denominator)
+		outputAmount = entities.FromFractionalAmount(route.Output, amount.Numerator, amount.Denominator)
 	}
 	swaps := []*Swap{{
 		Route:        route,
@@ -276,10 +276,10 @@ func FromRoutes(wrappedRoutes []*WrappedRoute, tradeType entities.TradeType) (*T
 		amount := wrappedRoute.Amount
 		route := wrappedRoute.Route
 		if tradeType == entities.ExactInput {
-			if !amount.Currency.Equal(route.Input.Currency) {
+			if !amount.Currency.Equal(route.Input) {
 				return nil, ErrInvalidAmountForRoute
 			}
-			amounts[0] = entities.FromFractionalAmount(route.Input.Currency, amount.Numerator, amount.Denominator)
+			amounts[0] = entities.FromFractionalAmount(route.Input, amount.Numerator, amount.Denominator)
 			for i := 0; i < len(route.TokenPath)-1; i++ {
 				pool := route.Pools[i]
 				outputAmount, _, err := pool.GetOutputAmount(amounts[i], nil)
@@ -288,13 +288,13 @@ func FromRoutes(wrappedRoutes []*WrappedRoute, tradeType entities.TradeType) (*T
 				}
 				amounts[i+1] = outputAmount
 			}
-			inputAmount = entities.FromFractionalAmount(route.Input.Currency, amount.Numerator, amount.Denominator)
-			outputAmount = entities.FromFractionalAmount(route.Output.Currency, amounts[len(amounts)-1].Numerator, amounts[len(amounts)-1].Denominator)
+			inputAmount = entities.FromFractionalAmount(route.Input, amount.Numerator, amount.Denominator)
+			outputAmount = entities.FromFractionalAmount(route.Output, amounts[len(amounts)-1].Numerator, amounts[len(amounts)-1].Denominator)
 		} else {
-			if !amount.Currency.Equal(route.Output.Currency) {
+			if !amount.Currency.Equal(route.Output) {
 				return nil, ErrInvalidAmountForRoute
 			}
-			amounts[len(amounts)-1] = entities.FromFractionalAmount(route.Output.Currency, amount.Numerator, amount.Denominator)
+			amounts[len(amounts)-1] = entities.FromFractionalAmount(route.Output, amount.Numerator, amount.Denominator)
 			for i := len(route.TokenPath) - 1; i > 0; i-- {
 				pool := route.Pools[i-1]
 				inputAmount, _, err := pool.GetInputAmount(amounts[i], nil)
@@ -303,8 +303,8 @@ func FromRoutes(wrappedRoutes []*WrappedRoute, tradeType entities.TradeType) (*T
 				}
 				amounts[i-1] = inputAmount
 			}
-			inputAmount = entities.FromFractionalAmount(route.Input.Currency, amounts[0].Numerator, amounts[0].Denominator)
-			outputAmount = entities.FromFractionalAmount(route.Output.Currency, amount.Numerator, amount.Denominator)
+			inputAmount = entities.FromFractionalAmount(route.Input, amounts[0].Numerator, amounts[0].Denominator)
+			outputAmount = entities.FromFractionalAmount(route.Output, amount.Numerator, amount.Denominator)
 		}
 		swaps = append(swaps, &Swap{
 			Route:        route,
@@ -354,10 +354,10 @@ func newTrade(routes []*Swap, tradeType entities.TradeType) (*Trade, error) {
 	inputCurrency := routes[0].InputAmount.Currency
 	outputCurrency := routes[0].OutputAmount.Currency
 	for _, route := range routes {
-		if !inputCurrency.Equal(route.Route.Input.Currency) {
+		if !inputCurrency.Equal(route.Route.Input) {
 			return nil, ErrInputCurrencyMismatch
 		}
-		if !outputCurrency.Equal(route.Route.Output.Currency) {
+		if !outputCurrency.Equal(route.Route.Output) {
 			return nil, ErrOutputCurrencyMismatch
 		}
 	}
@@ -500,7 +500,7 @@ func BestTradeExactIn(pools []*Pool, currencyAmountIn *entities.CurrencyAmount, 
 			return nil, err
 		}
 		// we have arrived at the output token, so this is the final trade of one of the paths
-		if amountOut.Currency.IsToken && amountOut.Currency.Equal(tokenOut.Currency) {
+		if amountOut.Currency.IsToken() && amountOut.Currency.Equal(tokenOut) {
 			r, err := NewRoute(append(currentPools, pool), tokenIn, tokenOut)
 			if err != nil {
 				return nil, err
@@ -580,7 +580,7 @@ func BestTradeExactOut(pools []*Pool, tokenIn *entities.Token, currencyAmountOut
 			return nil, err
 		}
 		// we have arrived at the input token, so this is the final trade of one of the paths
-		if amountIn.Currency.Equal(tokenIn.Currency) {
+		if amountIn.Currency.Equal(tokenIn) {
 			r, err := NewRoute(append([]*Pool{pool}, currentPools...), tokenIn, tokenOut)
 			if err != nil {
 				return nil, err

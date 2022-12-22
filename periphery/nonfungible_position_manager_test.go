@@ -63,7 +63,7 @@ func TestAddCallParameters(t *testing.T) {
 		CommonAddLiquidityOptions: &CommonAddLiquidityOptions{
 			SlippageTolerance: slippageToleranceT,
 			Deadline:          deadlineT,
-			UseNative:         core.EtherOnChain(1).Currency,
+			UseNative:         core.EtherOnChain(1).BaseCurrency,
 			NativeToken:       core.WETH9[1],
 		},
 	}
@@ -129,7 +129,7 @@ func TestAddCallParameters(t *testing.T) {
 		CommonAddLiquidityOptions: &CommonAddLiquidityOptions{
 			SlippageTolerance: slippageToleranceT,
 			Deadline:          deadlineT,
-			UseNative:         core.WETH9[1].Currency,
+			UseNative:         core.WETH9[1].BaseCurrency,
 			NativeToken:       core.WETH9[1],
 		},
 		MintSpecificOptions: &MintSpecificOptions{
@@ -146,8 +146,8 @@ func TestCollectCallParameters(t *testing.T) {
 	// works
 	opts := &CollectOptions{
 		TokenID:               tokenIDT,
-		ExpectedCurrencyOwed0: core.FromRawAmount(token0T.Currency, big.NewInt(0)),
-		ExpectedCurrencyOwed1: core.FromRawAmount(token1T.Currency, big.NewInt(0)),
+		ExpectedCurrencyOwed0: core.FromRawAmount(token0T, big.NewInt(0)),
+		ExpectedCurrencyOwed1: core.FromRawAmount(token1T, big.NewInt(0)),
 		Recipient:             recipientT,
 	}
 	params, err := CollectCallParameters(opts)
@@ -158,15 +158,15 @@ func TestCollectCallParameters(t *testing.T) {
 	// works with eth
 	opts = &CollectOptions{
 		TokenID:               tokenIDT,
-		ExpectedCurrencyOwed0: core.FromRawAmount(token1T.Currency, big.NewInt(0)),
-		ExpectedCurrencyOwed1: core.FromRawAmount(core.WETH9[1].Currency, big.NewInt(0)),
+		ExpectedCurrencyOwed0: core.FromRawAmount(token1T, big.NewInt(0)),
+		ExpectedCurrencyOwed1: core.FromRawAmount(core.WETH9[1], big.NewInt(0)),
 		ExpectedTokenOwed0:    token1T,
 		ExpectedTokenOwed1:    core.WETH9[1],
 		Recipient:             recipientT,
 	}
 	params, err = CollectCallParameters(opts)
 	assert.NoError(t, err)
-	assert.Equal(t, "0xac9650d8000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001a00000000000000000000000000000000000000000000000000000000000000084fc6f78650000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffff00000000000000000000000000000000ffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004449404b7c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064df2ab5bb00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000", hexutil.Encode(params.Calldata))
+	assert.Equal(t, "0xfc6f78650000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000ffffffffffffffffffffffffffffffff00000000000000000000000000000000ffffffffffffffffffffffffffffffff", hexutil.Encode(params.Calldata))
 	assert.Equal(t, "0x00", utils.ToHex(params.Value))
 }
 
@@ -180,8 +180,8 @@ func TestRemoveCallParameters(t *testing.T) {
 		SlippageTolerance:   slippageToleranceT,
 		Deadline:            deadlineT,
 		CollectOptions: &CollectOptions{
-			ExpectedCurrencyOwed0: core.FromRawAmount(token0T.Currency, big.NewInt(0)),
-			ExpectedCurrencyOwed1: core.FromRawAmount(token1T.Currency, big.NewInt(0)),
+			ExpectedCurrencyOwed0: core.FromRawAmount(token0T, big.NewInt(0)),
+			ExpectedCurrencyOwed1: core.FromRawAmount(token1T, big.NewInt(0)),
 			Recipient:             recipientT,
 		},
 	}
@@ -197,8 +197,8 @@ func TestRemoveCallParameters(t *testing.T) {
 		SlippageTolerance:   slippageToleranceT,
 		Deadline:            deadlineT,
 		CollectOptions: &CollectOptions{
-			ExpectedCurrencyOwed0: core.FromRawAmount(token0T.Currency, big.NewInt(0)),
-			ExpectedCurrencyOwed1: core.FromRawAmount(token1T.Currency, big.NewInt(0)),
+			ExpectedCurrencyOwed0: core.FromRawAmount(token0T, big.NewInt(0)),
+			ExpectedCurrencyOwed1: core.FromRawAmount(token1T, big.NewInt(0)),
 			Recipient:             recipientT,
 		},
 	}
@@ -215,8 +215,8 @@ func TestRemoveCallParameters(t *testing.T) {
 		Deadline:            deadlineT,
 		BurnToken:           true,
 		CollectOptions: &CollectOptions{
-			ExpectedCurrencyOwed0: core.FromRawAmount(token0T.Currency, big.NewInt(0)),
-			ExpectedCurrencyOwed1: core.FromRawAmount(token1T.Currency, big.NewInt(0)),
+			ExpectedCurrencyOwed0: core.FromRawAmount(token0T, big.NewInt(0)),
+			ExpectedCurrencyOwed1: core.FromRawAmount(token1T, big.NewInt(0)),
 			Recipient:             recipientT,
 		},
 	}
@@ -232,8 +232,8 @@ func TestRemoveCallParameters(t *testing.T) {
 		SlippageTolerance:   slippageToleranceT,
 		Deadline:            deadlineT,
 		CollectOptions: &CollectOptions{
-			ExpectedCurrencyOwed0: core.FromRawAmount(token0T.Currency, big.NewInt(0)),
-			ExpectedCurrencyOwed1: core.FromRawAmount(token1T.Currency, big.NewInt(0)),
+			ExpectedCurrencyOwed0: core.FromRawAmount(token0T, big.NewInt(0)),
+			ExpectedCurrencyOwed1: core.FromRawAmount(token1T, big.NewInt(0)),
 			Recipient:             recipientT,
 		},
 	}
@@ -251,8 +251,8 @@ func TestRemoveCallParameters(t *testing.T) {
 		SlippageTolerance:   slippageToleranceT,
 		Deadline:            deadlineT,
 		CollectOptions: &CollectOptions{
-			ExpectedCurrencyOwed0: core.FromRawAmount(token0T.Currency, big.NewInt(0)),
-			ExpectedCurrencyOwed1: core.FromRawAmount(token1T.Currency, big.NewInt(0)),
+			ExpectedCurrencyOwed0: core.FromRawAmount(token0T, big.NewInt(0)),
+			ExpectedCurrencyOwed1: core.FromRawAmount(token1T, big.NewInt(0)),
 			Recipient:             recipientT,
 		},
 	}
@@ -262,15 +262,15 @@ func TestRemoveCallParameters(t *testing.T) {
 	assert.Equal(t, "0x00", utils.ToHex(params.Value))
 
 	// works with eth
-	ethAmount := core.FromRawAmount(core.EtherOnChain(1).Currency, big.NewInt(0))
-	tokenAmount := core.FromRawAmount(token1T.Currency, big.NewInt(0))
+	ethAmount := core.FromRawAmount(core.EtherOnChain(1), big.NewInt(0))
+	tokenAmount := core.FromRawAmount(token1T, big.NewInt(0))
 	var (
 		owed0Amount *core.CurrencyAmount
 		owed1Amount *core.CurrencyAmount
 		owed0Token  *core.Token
 		owed1Token  *core.Token
 	)
-	if pool1wethT.Token0.Equals(token1T) {
+	if pool1wethT.Token0.Equal(token1T) {
 		owed0Amount = tokenAmount
 		owed1Amount = ethAmount
 		owed0Token = token1T

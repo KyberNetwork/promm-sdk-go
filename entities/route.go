@@ -52,11 +52,11 @@ func NewRoute(pools []*Pool, input, output *entities.Token) (*Route, error) {
 	tokenPath := []*entities.Token{input}
 	for i, p := range pools {
 		currentInputToken := tokenPath[i]
-		if !(currentInputToken.Equals(p.Token0) || currentInputToken.Equals(p.Token1)) {
+		if !(currentInputToken.Equal(p.Token0) || currentInputToken.Equal(p.Token1)) {
 			return nil, ErrPathNotContinuous
 		}
 		var nextToken *entities.Token
-		if currentInputToken.Equals(p.Token0) {
+		if currentInputToken.Equal(p.Token0) {
 			nextToken = p.Token1
 		} else {
 			nextToken = p.Token0
@@ -88,7 +88,7 @@ func (r *Route) MidPrice() (*entities.Price, error) {
 		nextInput *entities.Token
 		price     *entities.Price
 	)
-	if r.Pools[0].Token0.Equals(r.Input) {
+	if r.Pools[0].Token0.Equal(r.Input) {
 		nextInput = r.Pools[0].Token1
 		price = r.Pools[0].Token0Price()
 	} else {
@@ -99,7 +99,7 @@ func (r *Route) MidPrice() (*entities.Price, error) {
 	if err != nil {
 		return nil, err
 	}
-	r.midPrice = entities.NewPrice(r.Input.Currency, r.Output.Currency, price.Denominator, price.Numerator)
+	r.midPrice = entities.NewPrice(r.Input, r.Output, price.Denominator, price.Numerator)
 	return r.midPrice, nil
 }
 
@@ -107,7 +107,7 @@ func (r *Route) MidPrice() (*entities.Price, error) {
 func reducePrice(nextInput *entities.Token, price *entities.Price, pools []*Pool) (*entities.Price, error) {
 	var err error
 	for _, p := range pools {
-		if nextInput.Equals(p.Token0) {
+		if nextInput.Equal(p.Token0) {
 			nextInput = p.Token1
 			price, err = price.Multiply(p.Token0Price())
 			if err != nil {
