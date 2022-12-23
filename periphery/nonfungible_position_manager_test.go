@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	core "github.com/KyberNetwork/uniswap-sdk-core/entities"
+	core "github.com/daoleno/uniswap-sdk-core/entities"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/stretchr/testify/assert"
