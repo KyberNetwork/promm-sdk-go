@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Ether  = entities.EtherOnChain(1).Wrapped()
+	Ether  = entities.EtherOnChain(1)
 	token0 = entities.NewToken(1, common.HexToAddress("0x0000000000000000000000000000000000000001"), 18, "t0", "token0")
 	token1 = entities.NewToken(1, common.HexToAddress("0x0000000000000000000000000000000000000002"), 18, "t1", "token1")
 	token2 = entities.NewToken(1, common.HexToAddress("0x0000000000000000000000000000000000000003"), 18, "t2", "token2")
@@ -111,19 +111,22 @@ func v2StylePool(token0, token1 *entities.Token, reserve0, reserve1 *entities.Cu
 func TestFromRoute(t *testing.T) {
 	// can be constructed with ETHER as input'
 	r, _ := NewRoute([]*Pool{pool_weth_0}, Ether, token0)
-	trade, _ := FromRoute(r, entities.FromRawAmount(Ether, big.NewInt(10000)), entities.ExactInput)
+	trade, err := FromRoute(r, entities.FromRawAmount(Ether, big.NewInt(10)), entities.ExactInput)
+	if err != nil {
+		t.Fatal(err)
+	}
 	assert.Equal(t, trade.InputAmount().Currency, Ether)
 	assert.Equal(t, trade.OutputAmount().Currency, token0)
 
 	// can be constructed with ETHER as input for exact output
 	r, _ = NewRoute([]*Pool{pool_weth_0}, Ether, token0)
-	trade, _ = FromRoute(r, entities.FromRawAmount(token0, big.NewInt(10000)), entities.ExactOutput)
+	trade, _ = FromRoute(r, entities.FromRawAmount(token0, big.NewInt(10)), entities.ExactOutput)
 	assert.Equal(t, trade.InputAmount().Currency, Ether)
 	assert.Equal(t, trade.OutputAmount().Currency, token0)
 
 	// can be constructed with ETHER as output
 	r, _ = NewRoute([]*Pool{pool_weth_0}, token0, Ether)
-	trade, err := FromRoute(r, entities.FromRawAmount(Ether, big.NewInt(10000)), entities.ExactOutput)
+	trade, err = FromRoute(r, entities.FromRawAmount(Ether, big.NewInt(10)), entities.ExactOutput)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,14 +146,17 @@ func TestFromRoute(t *testing.T) {
 func TestFromRoutes(t *testing.T) {
 	// can be constructed with ETHER as input with multiple routes
 	r, _ := NewRoute([]*Pool{pool_weth_0}, Ether, token0)
-	trade, _ := FromRoutes([]*WrappedRoute{{Amount: entities.FromRawAmount(Ether, big.NewInt(10000)), Route: r}}, entities.ExactInput)
+	trade, err := FromRoutes([]*WrappedRoute{{Amount: entities.FromRawAmount(Ether, big.NewInt(10)), Route: r}}, entities.ExactInput)
+	if err != nil {
+		t.Fatal(err)
+	}
 	assert.Equal(t, trade.InputAmount().Currency, Ether)
 	assert.Equal(t, trade.OutputAmount().Currency, token0)
 
 	// can be constructed with ETHER as input for exact output with multiple routes
 	r0, _ := NewRoute([]*Pool{pool_weth_0}, Ether, token0)
 	r1, _ := NewRoute([]*Pool{pool_weth_1, pool_0_1}, Ether, token0)
-	trade, err := FromRoutes([]*WrappedRoute{
+	trade, err = FromRoutes([]*WrappedRoute{
 		{Amount: entities.FromRawAmount(token0, big.NewInt(3000)), Route: r0},
 		{Amount: entities.FromRawAmount(token0, big.NewInt(7000)), Route: r1},
 	}, entities.ExactOutput)
@@ -322,7 +328,7 @@ func TestWorstExecutionPrice(t *testing.T) {
 		},
 	}, entities.ExactInput)
 
-	_, err := exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(-1), big.NewInt(100)))
+	_, err := exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(-1), big.NewInt(100)), nil)
 	assert.ErrorIs(t, err, ErrInvalidSlippageTolerance, "throws if less than 0")
 
 	price, _ := exactIn.WorstExecutionPrice(entities.NewPercent(big.NewInt(0), big.NewInt(100)))
@@ -434,14 +440,14 @@ func TestPriceImpact(t *testing.T) {
 }
 
 func TestBestTradeExactIn(t *testing.T) {
-	_, err := BestTradeExactIn(nil, entities.FromRawAmount(token0, big.NewInt(10000)), nil, token2, nil, nil, nil, nil)
+	_, err := BestTradeExactIn(nil, entities.FromRawAmount(token0, big.NewInt(10000)), nil, nil, nil, nil, nil)
 	assert.ErrorIs(t, err, ErrNoPools, "throws with empty pools")
 
-	_, err = BestTradeExactIn([]*Pool{pool_0_2}, entities.FromRawAmount(token0, big.NewInt(10000)), nil, token2, &BestTradeOptions{MaxHops: 0}, nil, nil, nil)
+	_, err = BestTradeExactIn([]*Pool{pool_0_2}, entities.FromRawAmount(token0, big.NewInt(10000)), token2, &BestTradeOptions{MaxHops: 0}, nil, nil, nil)
 	assert.ErrorIs(t, err, ErrInvalidMaxHops, "throws with max hops of 0")
 
 	// provides best route
-	result, err := BestTradeExactIn([]*Pool{pool_0_1, pool_0_2, pool_1_2}, entities.FromRawAmount(token0, big.NewInt(10000)), token0, token2, nil, nil, nil, nil)
+	result, err := BestTradeExactIn([]*Pool{pool_0_1, pool_0_2, pool_1_2}, entities.FromRawAmount(token0, big.NewInt(10000)), token2, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -449,14 +455,14 @@ func TestBestTradeExactIn(t *testing.T) {
 	assert.Equal(t, len(result[0].Swaps[0].Route.Pools), 1)
 	assert.Equal(t, result[0].Swaps[0].Route.TokenPath, []*entities.Token{token0, token2})
 	assert.True(t, result[0].InputAmount().EqualTo(entities.FromRawAmount(token0, big.NewInt(10000)).Fraction))
-	assert.True(t, result[0].OutputAmount().EqualTo(entities.FromRawAmount(token2, big.NewInt(9971)).Fraction))
+	assert.True(t, result[0].OutputAmount().EqualTo(entities.FromRawAmount(token2, big.NewInt(9999)).Fraction))
 	assert.Equal(t, len(result[1].Swaps[0].Route.Pools), 2)
 	assert.Equal(t, result[1].Swaps[0].Route.TokenPath, []*entities.Token{token0, token1, token2})
 	assert.True(t, result[1].InputAmount().EqualTo(entities.FromRawAmount(token0, big.NewInt(10000)).Fraction))
-	assert.True(t, result[1].OutputAmount().EqualTo(entities.FromRawAmount(token2, big.NewInt(7004)).Fraction))
+	assert.True(t, result[1].OutputAmount().EqualTo(entities.FromRawAmount(token2, big.NewInt(7039)).Fraction))
 
 	// respects maxHops
-	result, err = BestTradeExactIn([]*Pool{pool_0_1, pool_0_2, pool_1_2}, entities.FromRawAmount(token0, big.NewInt(10)), token0, token2, &BestTradeOptions{MaxNumResults: 3, MaxHops: 1}, nil, nil, nil)
+	result, err = BestTradeExactIn([]*Pool{pool_0_1, pool_0_2, pool_1_2}, entities.FromRawAmount(token0, big.NewInt(10)), token2, &BestTradeOptions{MaxNumResults: 3, MaxHops: 1}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +470,7 @@ func TestBestTradeExactIn(t *testing.T) {
 	assert.Equal(t, len(result[0].Swaps[0].Route.Pools), 1)
 
 	// insufficient input for one pool
-	result, err = BestTradeExactIn([]*Pool{pool_0_1, pool_0_2, pool_1_2}, entities.FromRawAmount(token0, big.NewInt(1)), token0, token2, nil, nil, nil, nil)
+	result, err = BestTradeExactIn([]*Pool{pool_0_1, pool_0_2, pool_1_2}, entities.FromRawAmount(token0, big.NewInt(1)), token2, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -474,21 +480,21 @@ func TestBestTradeExactIn(t *testing.T) {
 	assert.True(t, result[0].OutputAmount().EqualTo(entities.FromRawAmount(token2, big.NewInt(0)).Fraction))
 
 	// respects n
-	result, err = BestTradeExactIn([]*Pool{pool_0_1, pool_0_2, pool_1_2}, entities.FromRawAmount(token0, big.NewInt(10)), token0, token2, &BestTradeOptions{MaxNumResults: 1, MaxHops: 3}, nil, nil, nil)
+	result, err = BestTradeExactIn([]*Pool{pool_0_1, pool_0_2, pool_1_2}, entities.FromRawAmount(token0, big.NewInt(10)), token2, &BestTradeOptions{MaxNumResults: 1, MaxHops: 3}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, len(result), 1)
 
 	// no path
-	result, err = BestTradeExactIn([]*Pool{pool_0_1, pool_0_3, pool_1_3}, entities.FromRawAmount(token0, big.NewInt(10)), token0, token2, nil, nil, nil, nil)
+	result, err = BestTradeExactIn([]*Pool{pool_0_1, pool_0_3, pool_1_3}, entities.FromRawAmount(token0, big.NewInt(10)), token2, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, len(result), 0)
 
 	// works for ETHER currency input
-	result, err = BestTradeExactIn([]*Pool{pool_weth_0, pool_0_1, pool_0_3, pool_1_3}, entities.FromRawAmount(Ether, big.NewInt(100)), Ether, token3, nil, nil, nil, nil)
+	result, err = BestTradeExactIn([]*Pool{pool_weth_0, pool_0_1, pool_0_3, pool_1_3}, entities.FromRawAmount(Ether, big.NewInt(100)), token3, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +507,7 @@ func TestBestTradeExactIn(t *testing.T) {
 	assert.Equal(t, result[1].OutputAmount().Currency, token3)
 
 	// works for ETHER currency output
-	result, err = BestTradeExactIn([]*Pool{pool_weth_0, pool_0_1, pool_0_3, pool_1_3}, entities.FromRawAmount(token3, big.NewInt(100)), token3, Ether, nil, nil, nil, nil)
+	result, err = BestTradeExactIn([]*Pool{pool_weth_0, pool_0_1, pool_0_3, pool_1_3}, entities.FromRawAmount(token3, big.NewInt(100)), Ether, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -520,35 +526,35 @@ func TestMaximumAmountIn(t *testing.T) {
 	// tradeType = EXACT_INPUT
 	exactIn, _ := FromRoute(r, entities.FromRawAmount(token0, big.NewInt(100)), entities.ExactInput)
 
-	_, err := exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(-1), big.NewInt(100)))
+	_, err := exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(-1), big.NewInt(100)), nil)
 	assert.ErrorIs(t, err, ErrInvalidSlippageTolerance, "throws if less than 0")
 
-	amountIn, _ := exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(0), big.NewInt(100)))
+	amountIn, _ := exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(0), big.NewInt(100)), nil)
 	assert.Equal(t, amountIn, exactIn.InputAmount(), "returns exact if 0")
 
 	// returns exact if nonzero
-	amountIn, _ = exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(0), big.NewInt(100)))
+	amountIn, _ = exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(0), big.NewInt(100)), nil)
 	assert.True(t, amountIn.EqualTo(entities.FromRawAmount(token0, big.NewInt(100)).Fraction))
-	amountIn, _ = exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(5), big.NewInt(100)))
+	amountIn, _ = exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(5), big.NewInt(100)), nil)
 	assert.True(t, amountIn.EqualTo(entities.FromRawAmount(token0, big.NewInt(100)).Fraction))
-	amountIn, _ = exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(200), big.NewInt(100)))
+	amountIn, _ = exactIn.MaximumAmountIn(entities.NewPercent(big.NewInt(200), big.NewInt(100)), nil)
 	assert.True(t, amountIn.EqualTo(entities.FromRawAmount(token0, big.NewInt(100)).Fraction))
 
 	// tradeType = EXACT_OUTPUT
 	exactOut, _ := FromRoute(r, entities.FromRawAmount(token2, big.NewInt(10000)), entities.ExactOutput)
 
-	_, err = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(-1), big.NewInt(10000)))
+	_, err = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(-1), big.NewInt(10000)), nil)
 	assert.ErrorIs(t, err, ErrInvalidSlippageTolerance, "throws if less than 0")
 
-	amountIn, _ = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(0), big.NewInt(10000)))
+	amountIn, _ = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(0), big.NewInt(10000)), nil)
 	assert.Equal(t, amountIn, exactOut.InputAmount(), "returns exact if 0")
 
 	// returns slippage amount if nonzero
-	amountIn, _ = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(0), big.NewInt(100)))
+	amountIn, _ = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(0), big.NewInt(100)), nil)
 	assert.True(t, amountIn.EqualTo(entities.FromRawAmount(token0, big.NewInt(15488)).Fraction))
-	amountIn, _ = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(5), big.NewInt(100)))
+	amountIn, _ = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(5), big.NewInt(100)), nil)
 	assert.True(t, amountIn.EqualTo(entities.FromRawAmount(token0, big.NewInt(16262)).Fraction))
-	amountIn, _ = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(200), big.NewInt(100)))
+	amountIn, _ = exactOut.MaximumAmountIn(entities.NewPercent(big.NewInt(200), big.NewInt(100)), nil)
 	assert.True(t, amountIn.EqualTo(entities.FromRawAmount(token0, big.NewInt(46464)).Fraction))
 }
 
@@ -558,47 +564,47 @@ func TestMinimumAmountOut(t *testing.T) {
 	// tradeType = EXACT_INPUT
 	exactIn, _ := FromRoute(r, entities.FromRawAmount(token0, big.NewInt(10000)), entities.ExactInput)
 
-	_, err := exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(-1), big.NewInt(100)))
+	_, err := exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(-1), big.NewInt(100)), nil)
 	assert.ErrorIs(t, err, ErrInvalidSlippageTolerance, "throws if less than 0")
 
-	amountOut, _ := exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(0), big.NewInt(10000)))
+	amountOut, _ := exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(0), big.NewInt(10000)), nil)
 	assert.Equal(t, amountOut, exactIn.OutputAmount(), "returns exact if 0")
 
 	// returns exact if nonzero
-	amountOut, _ = exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(0), big.NewInt(100)))
+	amountOut, _ = exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(0), big.NewInt(100)), nil)
 	assert.True(t, amountOut.EqualTo(entities.FromRawAmount(token2, big.NewInt(7004)).Fraction))
-	amountOut, _ = exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(5), big.NewInt(100)))
+	amountOut, _ = exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(5), big.NewInt(100)), nil)
 	assert.True(t, amountOut.EqualTo(entities.FromRawAmount(token2, big.NewInt(6670)).Fraction))
-	amountOut, _ = exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(200), big.NewInt(100)))
+	amountOut, _ = exactIn.MinimumAmountOut(entities.NewPercent(big.NewInt(200), big.NewInt(100)), nil)
 	assert.True(t, amountOut.EqualTo(entities.FromRawAmount(token2, big.NewInt(2334)).Fraction))
 
 	// tradeType = EXACT_OUTPUT
 	exactOut, _ := FromRoute(r, entities.FromRawAmount(token2, big.NewInt(100)), entities.ExactOutput)
 
-	_, err = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(-1), big.NewInt(100)))
+	_, err = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(-1), big.NewInt(100)), nil)
 	assert.ErrorIs(t, err, ErrInvalidSlippageTolerance, "throws if less than 0")
 
-	amountOut, _ = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(0), big.NewInt(100)))
+	amountOut, _ = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(0), big.NewInt(100)), nil)
 	assert.Equal(t, amountOut, exactOut.OutputAmount(), "returns exact if 0")
 
 	// returns slippage amount if nonzero
-	amountOut, _ = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(0), big.NewInt(100)))
+	amountOut, _ = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(0), big.NewInt(100)), nil)
 	assert.True(t, amountOut.EqualTo(entities.FromRawAmount(token2, big.NewInt(100)).Fraction))
-	amountOut, _ = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(5), big.NewInt(100)))
+	amountOut, _ = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(5), big.NewInt(100)), nil)
 	assert.True(t, amountOut.EqualTo(entities.FromRawAmount(token2, big.NewInt(100)).Fraction))
-	amountOut, _ = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(200), big.NewInt(100)))
+	amountOut, _ = exactOut.MinimumAmountOut(entities.NewPercent(big.NewInt(200), big.NewInt(100)), nil)
 	assert.True(t, amountOut.EqualTo(entities.FromRawAmount(token2, big.NewInt(100)).Fraction))
 }
 
 func TestBestTradeExactOut(t *testing.T) {
-	_, err := BestTradeExactOut(nil, token0, entities.FromRawAmount(token2, big.NewInt(100)), token2, nil, nil, nil, nil)
+	_, err := BestTradeExactOut(nil, token0, entities.FromRawAmount(token2, big.NewInt(100)), nil, nil, nil, nil)
 	assert.ErrorIs(t, err, ErrNoPools, "throws with empty pools")
 
-	_, err = BestTradeExactOut([]*Pool{pool_0_2}, token0, entities.FromRawAmount(token2, big.NewInt(100)), token2, &BestTradeOptions{MaxHops: 0}, nil, nil, nil)
+	_, err = BestTradeExactOut([]*Pool{pool_0_2}, token0, entities.FromRawAmount(token2, big.NewInt(100)), &BestTradeOptions{MaxHops: 0}, nil, nil, nil)
 	assert.ErrorIs(t, err, ErrInvalidMaxHops, "throws with max hops of 0")
 
 	// provides best route
-	result, err := BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2, big.NewInt(10000)), token2, nil, nil, nil, nil)
+	result, err := BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2, big.NewInt(10000)), nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -613,7 +619,7 @@ func TestBestTradeExactOut(t *testing.T) {
 	assert.True(t, result[1].OutputAmount().EqualTo(entities.FromRawAmount(token2, big.NewInt(10000)).Fraction))
 
 	// respects maxHops
-	result, err = BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2, big.NewInt(10)), token2, &BestTradeOptions{MaxNumResults: 3, MaxHops: 1}, nil, nil, nil)
+	result, err = BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2, big.NewInt(10)), &BestTradeOptions{MaxNumResults: 3, MaxHops: 1}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -622,29 +628,29 @@ func TestBestTradeExactOut(t *testing.T) {
 	assert.Equal(t, result[0].Swaps[0].Route.TokenPath, []*entities.Token{token0, token2})
 
 	// // insufficient liquidity
-	// result, _ = BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2.Currency, big.NewInt(1200)), token2, nil, nil, nil, nil)
+	result, _ = BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2, big.NewInt(1200)), nil, nil, nil, nil)
 	// assert.Equal(t, len(result), 0)
 
 	// // insufficient liquidity in one pool but not the other
-	// result, _ = BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2.Currency, big.NewInt(1050)), token2, nil, nil, nil, nil)
+	result, _ = BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2, big.NewInt(1050)), nil, nil, nil, nil)
 	// assert.Equal(t, len(result), 1)
 
 	// respects n
-	result, err = BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2, big.NewInt(10)), token2, &BestTradeOptions{MaxNumResults: 1, MaxHops: 3}, nil, nil, nil)
+	result, err = BestTradeExactOut([]*Pool{pool_0_1, pool_0_2, pool_1_2}, token0, entities.FromRawAmount(token2, big.NewInt(10)), &BestTradeOptions{MaxNumResults: 1, MaxHops: 3}, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, len(result), 1)
 
 	// no path
-	result, err = BestTradeExactOut([]*Pool{pool_0_1, pool_0_3, pool_1_3}, token0, entities.FromRawAmount(token2, big.NewInt(10)), token2, nil, nil, nil, nil)
+	result, err = BestTradeExactOut([]*Pool{pool_0_1, pool_0_3, pool_1_3}, token0, entities.FromRawAmount(token2, big.NewInt(10)), nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, len(result), 0)
 
 	// works for ETHER currency input
-	result, err = BestTradeExactOut([]*Pool{pool_weth_0, pool_0_1, pool_0_3, pool_1_3}, Ether, entities.FromRawAmount(token3, big.NewInt(10000)), token3, nil, nil, nil, nil)
+	result, err = BestTradeExactOut([]*Pool{pool_weth_0, pool_0_1, pool_0_3, pool_1_3}, Ether, entities.FromRawAmount(token3, big.NewInt(10000)), nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -657,7 +663,7 @@ func TestBestTradeExactOut(t *testing.T) {
 	assert.Equal(t, result[1].OutputAmount().Currency, token3)
 
 	// works for ETHER currency output
-	result, err = BestTradeExactOut([]*Pool{pool_weth_0, pool_0_1, pool_0_3, pool_1_3}, token3, entities.FromRawAmount(Ether, big.NewInt(100)), Ether, nil, nil, nil, nil)
+	result, err = BestTradeExactOut([]*Pool{pool_weth_0, pool_0_1, pool_0_3, pool_1_3}, token3, entities.FromRawAmount(Ether, big.NewInt(100)), nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

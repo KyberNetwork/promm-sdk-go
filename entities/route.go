@@ -18,8 +18,8 @@ var (
 type Route struct {
 	Pools     []*Pool
 	TokenPath []*entities.Token
-	Input     *entities.Token
-	Output    *entities.Token
+	Input     entities.Currency
+	Output    entities.Currency
 
 	midPrice *entities.Price
 }
@@ -30,7 +30,7 @@ type Route struct {
  * @param input The input token
  * @param output The output token
  */
-func NewRoute(pools []*Pool, input, output *entities.Token) (*Route, error) {
+func NewRoute(pools []*Pool, input, output entities.Currency) (*Route, error) {
 	if len(pools) == 0 {
 		return nil, ErrRouteNoPools
 	}
@@ -40,16 +40,14 @@ func NewRoute(pools []*Pool, input, output *entities.Token) (*Route, error) {
 			return nil, ErrAllOnSameChain
 		}
 	}
+	wrappedInput := input.Wrapped()
 
-	if !pools[0].InvolvesToken(input) {
+	if !pools[0].InvolvesToken(wrappedInput) {
 		return nil, ErrInputNotInvolved
-	}
-	if !pools[len(pools)-1].InvolvesToken(output) {
-		return nil, ErrOutputNotInvolved
 	}
 
 	// Normalizes token0-token1 order and selects the next token/fee step to add to the path
-	tokenPath := []*entities.Token{input}
+	tokenPath := []*entities.Token{wrappedInput}
 	for i, p := range pools {
 		currentInputToken := tokenPath[i]
 		if !(currentInputToken.Equal(p.Token0) || currentInputToken.Equal(p.Token1)) {
@@ -66,6 +64,10 @@ func NewRoute(pools []*Pool, input, output *entities.Token) (*Route, error) {
 
 	if output == nil {
 		output = tokenPath[len(tokenPath)-1]
+	} else {
+		if !pools[len(pools)-1].InvolvesToken(output.Wrapped()) {
+			return nil, ErrOutputNotInvolved
+		}
 	}
 	return &Route{
 		Pools:     pools,

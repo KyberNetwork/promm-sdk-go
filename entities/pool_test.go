@@ -81,7 +81,7 @@ func TestNewPool(t *testing.T) {
 
 func TestGetAddress(t *testing.T) {
 	addr, _ := GetAddress(USDC, DAI, constants.FeeLow, "")
-	assert.Equal(t, addr, common.HexToAddress("0x6c6Bc977E13Df9b0de53b251522280BB72383700"), "matches an example")
+	assert.Equal(t, addr, common.HexToAddress("0xE5e30b9aDD54E8E6DDf05b76693ad690fEe56a25"), "matches an example")
 }
 
 func TestToken0(t *testing.T) {

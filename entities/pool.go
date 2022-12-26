@@ -166,8 +166,9 @@ func (p *Pool) GetOutputAmount(
 	inputAmount *entities.CurrencyAmount, sqrtPriceLimitX96 *big.Int,
 ) (*entities.CurrencyAmount, *Pool, error) {
 	var startTime = time.Now().UnixNano()
-	// TODO: check involoves token
-	// invariant(this.involvesToken(inputAmount.currency), 'TOKEN')
+	if !(inputAmount.Currency.IsToken() && p.InvolvesToken(inputAmount.Currency.Wrapped())) {
+		return nil, nil, ErrTokenNotInvolved
+	}
 	zeroForOne := inputAmount.Currency.Equal(p.Token0)
 	outputAmount, sqrtRatioX96, liquidity, reinvestLiquidity, tickCurrent, err := p.swap(
 		zeroForOne, inputAmount.Quotient(), sqrtPriceLimitX96,
@@ -205,8 +206,9 @@ func (p *Pool) GetOutputAmount(
 func (p *Pool) GetInputAmount(
 	outputAmount *entities.CurrencyAmount, sqrtPriceLimitX96 *big.Int,
 ) (*entities.CurrencyAmount, *Pool, error) {
-	// TODO: check involoves token
-	// invariant(outputAmount.currency.isToken && this.involvesToken(outputAmount.currency), 'TOKEN')
+	if !(outputAmount.Currency.IsToken() && p.InvolvesToken(outputAmount.Currency.Wrapped())) {
+		return nil, nil, ErrTokenNotInvolved
+	}
 	zeroForOne := outputAmount.Currency.Equal(p.Token1)
 	inputAmount, sqrtRatioX96, liquidity, reinvestLiquidity, tickCurrent, err := p.swap(
 		zeroForOne, new(big.Int).Mul(outputAmount.Quotient(), constants.NegativeOne), sqrtPriceLimitX96,
