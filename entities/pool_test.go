@@ -287,7 +287,7 @@ func TestGetInputAmount(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.True(t, inputAmount.Currency.Equal(USDC))
-	assert.Equal(t, inputAmount.Quotient(), big.NewInt(100))
+	assert.Equal(t, inputAmount.Quotient(), big.NewInt(98))
 
 	// DAI -> USDC
 	outputAmount = entities.FromRawAmount(USDC, big.NewInt(98))
@@ -296,5 +296,5 @@ func TestGetInputAmount(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.True(t, inputAmount.Currency.Equal(DAI))
-	assert.Equal(t, inputAmount.Quotient(), big.NewInt(100))
+	assert.Equal(t, inputAmount.Quotient(), big.NewInt(98))
 }
