@@ -10,6 +10,14 @@ import (
 )
 
 var ErrInvalidInput = errors.New("invalid input")
+var powers = []int64{128, 64, 32, 16, 8, 4, 2, 1}
+var powerBigInts = make([]*big.Int, len(powers))
+
+func init() {
+	for i := range powers {
+		powerBigInts[i] = big.NewInt(powers[i])
+	}
+}
 
 func MostSignificantBit(x *big.Int) (int64, error) {
 	if x.Cmp(constants.Zero) <= 0 {
@@ -19,8 +27,8 @@ func MostSignificantBit(x *big.Int) (int64, error) {
 		return 0, ErrInvalidInput
 	}
 	var msb int64
-	for _, power := range []int64{128, 64, 32, 16, 8, 4, 2, 1} {
-		min := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(power)), nil)
+	for i, power := range powers {
+		min := new(big.Int).Exp(constants.Two, powerBigInts[i], nil)
 		if x.Cmp(min) >= 0 {
 			x = new(big.Int).Rsh(x, uint(power))
 			msb += power

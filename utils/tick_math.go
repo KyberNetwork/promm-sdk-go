@@ -26,8 +26,8 @@ var (
 )
 
 func mulShift(val *big.Int, mulBy *big.Int) *big.Int {
-
-	return new(big.Int).Rsh(new(big.Int).Mul(val, mulBy), 128)
+	temp := new(big.Int).Mul(val, mulBy)
+	return new(big.Int).Rsh(temp, 128)
 }
 
 var (
@@ -162,22 +162,22 @@ func GetTickAtSqrtRatio(sqrtRatioX96 *big.Int) (int, error) {
 		return 0, err
 	}
 	var r *big.Int
-	if big.NewInt(msb).Cmp(big.NewInt(128)) >= 0 {
-		r = new(big.Int).Rsh(sqrtRatioX128, uint(msb-127))
+	if big.NewInt(msb).Cmp(constants.BigInt128) >= 0 {
+		r = sqrtRatioX128.Rsh(sqrtRatioX128, uint(msb-127))
 	} else {
-		r = new(big.Int).Lsh(sqrtRatioX128, uint(127-msb))
+		r = sqrtRatioX128.Lsh(sqrtRatioX128, uint(127-msb))
 	}
-
-	log2 := new(big.Int).Lsh(new(big.Int).Sub(big.NewInt(msb), big.NewInt(128)), 64)
+	temp := new(big.Int).Sub(big.NewInt(msb), constants.BigInt128)
+	log2 := temp.Lsh(temp, 64)
 
 	for i := 0; i < 14; i++ {
-		r = new(big.Int).Rsh(new(big.Int).Mul(r, r), 127)
+		r.Rsh(r.Mul(r, r), 127)
 		f := new(big.Int).Rsh(r, 128)
 		log2 = new(big.Int).Or(log2, new(big.Int).Lsh(f, uint(63-i)))
-		r = new(big.Int).Rsh(r, uint(f.Int64()))
+		r.Rsh(r, uint(f.Int64()))
 	}
 
-	logSqrt10001 := new(big.Int).Mul(log2, magicSqrt10001)
+	logSqrt10001 := log2.Mul(log2, magicSqrt10001)
 
 	tickLow := new(big.Int).Rsh(new(big.Int).Sub(logSqrt10001, magicTickLow), 128).Int64()
 	tickHigh := new(big.Int).Rsh(new(big.Int).Add(logSqrt10001, magicTickHigh), 128).Int64()

@@ -32,6 +32,7 @@ func ComputeSwapStep(
 		sqrtRatioNextX96 = sqrtRatioTargetX96
 	}
 
+	// ??? not use
 	amountIn = usedAmount
 
 	var absUsedAmount *big.Int
@@ -81,11 +82,12 @@ func calcReachAmount(
 			// numerator = 2 * liquidity * absPriceDiff
 			// denominator = currentSqrtP * (2 * targetSqrtP - currentSqrtP * feeInFeeUnits / FEE_UNITS)
 			// overflow should not happen because the absPriceDiff is capped to ~5%
+			temp := new(big.Int).Mul(TwoFeeUnits, sqrtRatioTargetX96)
 			denominator := new(big.Int).Sub(
-				new(big.Int).Mul(TwoFeeUnits, sqrtRatioTargetX96),
+				temp,
 				new(big.Int).Mul(big.NewInt(int64(feeInUnits)), sqrtRatioCurrentX96),
 			)
-			numerator := MulDiv(liquidity, new(big.Int).Mul(TwoFeeUnits, absPriceDiff), denominator)
+			numerator := MulDiv(liquidity, temp.Mul(TwoFeeUnits, absPriceDiff), denominator)
 
 			reachAmount = MulDiv(numerator, constants.Q96, sqrtRatioCurrentX96)
 		} else {
@@ -93,11 +95,13 @@ func calcReachAmount(
 			// numerator: liquidity * absPriceDiff * (TWO_FEE_UNITS * targetSqrtP - feeInFeeUnits * (targetSqrtP + currentSqrtP))
 			// denominator: (TWO_FEE_UNITS * targetSqrtP - feeInFeeUnits * currentSqrtP)
 			// overflow should not happen because the absPriceDiff is capped to ~5%
+			temp := new(big.Int).Mul(TwoFeeUnits, sqrtRatioCurrentX96)
+
 			denominator := new(big.Int).Sub(
-				new(big.Int).Mul(TwoFeeUnits, sqrtRatioCurrentX96),
+				temp,
 				new(big.Int).Mul(big.NewInt(int64(feeInUnits)), sqrtRatioTargetX96),
 			)
-			numerator := MulDiv(liquidity, new(big.Int).Mul(TwoFeeUnits, absPriceDiff), denominator)
+			numerator := MulDiv(liquidity, temp.Mul(TwoFeeUnits, absPriceDiff), denominator)
 
 			reachAmount = MulDiv(numerator, sqrtRatioCurrentX96, constants.Q96)
 		}
@@ -109,33 +113,38 @@ func calcReachAmount(
 			// numerator: (liquidity)(absPriceDiff)(2 * currentSqrtP - deltaL * (currentSqrtP + targetSqrtP))
 			// denominator: (currentSqrtP * targetSqrtP) * (2 * currentSqrtP - deltaL * targetSqrtP)
 			// overflow should not happen because the absPriceDiff is capped to ~5%
+
+			temp := new(big.Int).Mul(TwoFeeUnits, sqrtRatioCurrentX96)
+
 			denominator := new(big.Int).Sub(
-				new(big.Int).Mul(TwoFeeUnits, sqrtRatioCurrentX96),
+				temp,
 				new(big.Int).Mul(big.NewInt(int64(feeInUnits)), sqrtRatioTargetX96),
 			)
 			numerator := new(big.Int).Sub(
-				denominator, new(big.Int).Mul(big.NewInt(int64(feeInUnits)), sqrtRatioCurrentX96),
+				denominator, temp.Mul(big.NewInt(int64(feeInUnits)), sqrtRatioCurrentX96),
 			)
-			numerator = MulDiv(new(big.Int).Lsh(liquidity, 96), numerator, denominator)
+			numerator = MulDiv(temp.Lsh(liquidity, 96), numerator, denominator)
 
 			reachAmount = new(big.Int).Div(MulDiv(numerator, absPriceDiff, sqrtRatioCurrentX96), sqrtRatioTargetX96)
-			reachAmount = new(big.Int).Mul(reachAmount, constants.NegativeOne)
+			reachAmount = temp.Mul(reachAmount, constants.NegativeOne)
 		} else {
 			// exactOut + swap 1 -> 0
 			// numerator: liquidity * absPriceDiff * (TWO_FEE_UNITS * targetSqrtP - feeInFeeUnits * (targetSqrtP + currentSqrtP))
 			// denominator: (TWO_FEE_UNITS * targetSqrtP - feeInFeeUnits * currentSqrtP)
 			// overflow should not happen because the absPriceDiff is capped to ~5%
+			temp := new(big.Int).Mul(TwoFeeUnits, sqrtRatioTargetX96)
+
 			denominator := new(big.Int).Sub(
-				new(big.Int).Mul(TwoFeeUnits, sqrtRatioTargetX96),
+				temp,
 				new(big.Int).Mul(big.NewInt(int64(feeInUnits)), sqrtRatioCurrentX96),
 			)
 			numerator := new(big.Int).Sub(
-				denominator, new(big.Int).Mul(big.NewInt(int64(feeInUnits)), sqrtRatioTargetX96),
+				denominator, temp.Mul(big.NewInt(int64(feeInUnits)), sqrtRatioTargetX96),
 			)
 			numerator = MulDiv(liquidity, numerator, denominator)
 
 			reachAmount = MulDiv(numerator, absPriceDiff, constants.Q96)
-			reachAmount = new(big.Int).Mul(reachAmount, constants.NegativeOne)
+			reachAmount = temp.Mul(reachAmount, constants.NegativeOne)
 		}
 	}
 
@@ -172,8 +181,9 @@ func calcReturnedAmount(
 		// returnedAmount = (liquidity + deltaL)/nextSqrtP - (liquidity)/currentSqrtP
 		// if exactInput, minimise actual output (<0, make less negative) so we avoid sending too much
 		// if exactOutput, maximise actual input (>0) so we get desired output amount
-		returnedAmount = new(big.Int).Add(
-			MulDivRoundingUp(new(big.Int).Add(liquidity, deltaL), constants.Q96, sqrtRatioTargetX96),
+		temp := new(big.Int).Add(liquidity, deltaL)
+		returnedAmount = temp.Add(
+			MulDivRoundingUp(temp, constants.Q96, sqrtRatioTargetX96),
 			new(big.Int).Mul(MulDivRoundingUp(liquidity, constants.Q96, sqrtRatioCurrentX96), constants.NegativeOne),
 		)
 	}
@@ -191,44 +201,43 @@ func calcReturnedAmount(
 func calcIncrementalLiquidity(
 	sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, absAmount *big.Int, exactIn, isToken0 bool,
 ) (deltaL *big.Int) {
-	var tmp1, tmp2, tmp3 *big.Int
 
 	// this is when we reach the target, then we have target_X96
 	if isToken0 {
 		// deltaL = nextSqrtP * (liquidity / currentSqrtP +/- absDelta)) - liquidity
 		// needs to be minimum
-		tmp1 = MulDiv(liquidity, constants.Q96, sqrtRatioCurrentX96)
+		tmp := MulDiv(liquidity, constants.Q96, sqrtRatioCurrentX96)
 		if exactIn {
-			tmp2 = new(big.Int).Add(tmp1, absAmount)
+			tmp.Add(tmp, absAmount)
 		} else {
-			tmp2 = new(big.Int).Sub(tmp1, absAmount)
+			tmp.Sub(tmp, absAmount)
 		}
-		tmp3 = MulDiv(sqrtRatioTargetX96, tmp2, constants.Q96)
+		tmp = MulDiv(sqrtRatioTargetX96, tmp, constants.Q96)
 
 		// in edge cases where liquidity or absDelta is small
 		// liquidity might be greater than nextSqrtP * ((liquidity / currentSqrtP) +/- absDelta))
 		// due to rounding
-		if tmp3.Cmp(liquidity) > 0 {
-			deltaL = new(big.Int).Sub(tmp3, liquidity)
+		if tmp.Cmp(liquidity) > 0 {
+			deltaL = tmp.Sub(tmp, liquidity)
 		} else {
 			deltaL = constants.Zero
 		}
 	} else {
 		// deltaL = (liquidity * currentSqrtP +/- absDelta) / nextSqrtP - liquidity
 		// needs to be minimum
-		tmp1 = MulDiv(liquidity, sqrtRatioCurrentX96, constants.Q96)
+		tmp := MulDiv(liquidity, sqrtRatioCurrentX96, constants.Q96)
 		if exactIn {
-			tmp2 = new(big.Int).Add(tmp1, absAmount)
+			tmp.Add(tmp, absAmount)
 		} else {
-			tmp2 = new(big.Int).Sub(tmp1, absAmount)
+			tmp.Sub(tmp, absAmount)
 		}
-		tmp3 = MulDiv(tmp2, constants.Q96, sqrtRatioTargetX96)
+		tmp = MulDiv(tmp, constants.Q96, sqrtRatioTargetX96)
 
 		// in edge cases where liquidity or absDelta is small
 		// liquidity might be greater than nextSqrtP * ((liquidity / currentSqrtP) +/- absDelta))
 		// due to rounding
-		if tmp3.Cmp(liquidity) > 0 {
-			deltaL = new(big.Int).Sub(tmp3, liquidity)
+		if tmp.Cmp(liquidity) > 0 {
+			deltaL = tmp.Sub(tmp, liquidity)
 		} else {
 			deltaL = constants.Zero
 		}
@@ -261,21 +270,22 @@ func estimateIncrementalLiquidity(
 	} else {
 		// obtain the smaller root of the quadratic equation
 		// ax^2 - 2bx + c = 0 such that b > 0, and x denotes deltaL
+		tmp := new(big.Int).Sub(FeeUnits, fee)
 		a := fee
-		b := new(big.Int).Mul(new(big.Int).Sub(FeeUnits, fee), liquidity)
-		c := new(big.Int).Mul(new(big.Int).Mul(fee, liquidity), absAmount)
+		b := new(big.Int).Mul(tmp, liquidity)
+		c := new(big.Int).Mul(tmp.Mul(fee, liquidity), absAmount)
 
 		if isToken0 {
 			// a = feeInFeeUnits
 			// b = (FEE_UNITS - feeInFeeUnits) * liquidity - FEE_UNITS * absDelta * currentSqrtP
 			// c = feeInFeeUnits * liquidity * absDelta * currentSqrtP
-			b = new(big.Int).Sub(b, MulDiv(new(big.Int).Mul(FeeUnits, absAmount), sqrtRatioCurrentX96, constants.Q96))
+			b = tmp.Sub(b, MulDiv(tmp.Mul(FeeUnits, absAmount), sqrtRatioCurrentX96, constants.Q96))
 			c = MulDiv(c, sqrtRatioCurrentX96, constants.Q96)
 		} else {
 			// a = feeInFeeUnits
 			// b = (FEE_UNITS - feeInFeeUnits) * liquidity - FEE_UNITS * absDelta / currentSqrtP
 			// c = liquidity * feeInFeeUnits * absDelta / currentSqrtP
-			b = new(big.Int).Sub(b, MulDiv(new(big.Int).Mul(FeeUnits, absAmount), constants.Q96, sqrtRatioCurrentX96))
+			b = tmp.Sub(b, MulDiv(tmp.Mul(FeeUnits, absAmount), constants.Q96, sqrtRatioCurrentX96))
 			c = MulDiv(c, constants.Q96, sqrtRatioCurrentX96)
 		}
 
@@ -292,7 +302,6 @@ func calcFinalPrice(
 	absAmount, liquidity, deltaL, sqrtRatioCurrentX96 *big.Int, exactIn, isToken0 bool,
 ) (returnAmount *big.Int) {
 	returnAmount = constants.Zero
-
 	if isToken0 {
 		tmp := MulDiv(absAmount, sqrtRatioCurrentX96, constants.Q96)
 
@@ -300,13 +309,13 @@ func calcFinalPrice(
 			// minimise actual output (<0, make less negative) so we avoid sending too much
 			// returnedAmount = deltaL * nextSqrtP - liquidity * (currentSqrtP - nextSqrtP)
 			returnAmount = MulDivRoundingUp(
-				new(big.Int).Add(liquidity, deltaL), sqrtRatioCurrentX96, new(big.Int).Add(liquidity, tmp),
+				new(big.Int).Add(liquidity, deltaL), sqrtRatioCurrentX96, tmp.Add(liquidity, tmp),
 			)
 		} else {
 			// maximise actual input (>0) so we get desired output amount
 			// returnedAmount = deltaL * nextSqrtP + liquidity * (nextSqrtP - currentSqrtP)
 			returnAmount = MulDiv(
-				new(big.Int).Add(liquidity, deltaL), sqrtRatioCurrentX96, new(big.Int).Sub(liquidity, tmp),
+				new(big.Int).Add(liquidity, deltaL), sqrtRatioCurrentX96, tmp.Sub(liquidity, tmp),
 			)
 		}
 	} else {
@@ -317,11 +326,11 @@ func calcFinalPrice(
 
 		if exactIn {
 			returnAmount = MulDiv(
-				new(big.Int).Add(liquidity, tmp), sqrtRatioCurrentX96, new(big.Int).Add(liquidity, deltaL),
+				tmp.Add(liquidity, tmp), sqrtRatioCurrentX96, new(big.Int).Add(liquidity, deltaL),
 			)
 		} else {
 			returnAmount = MulDivRoundingUp(
-				new(big.Int).Sub(liquidity, tmp), sqrtRatioCurrentX96, new(big.Int).Add(liquidity, deltaL),
+				tmp.Sub(liquidity, tmp), sqrtRatioCurrentX96, new(big.Int).Add(liquidity, deltaL),
 			)
 		}
 	}

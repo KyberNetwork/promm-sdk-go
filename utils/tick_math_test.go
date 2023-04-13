@@ -31,5 +31,5 @@ func TestGetTickAtSqrtRatio(t *testing.T) {
 	assert.Equal(t, tmin, MinTick, "returns the correct value for sqrt ratio at min tick")
 
 	tmax, _ := GetTickAtSqrtRatio(new(big.Int).Sub(MaxSqrtRatio, constants.One))
-	assert.Equal(t, tmax, MaxTick-1, "returns the correct value for sqrt ratio at max tick")
+	assert.Equal(t, MaxTick-1, tmax, "returns the correct value for sqrt ratio at max tick")
 }
