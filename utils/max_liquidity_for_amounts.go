@@ -21,8 +21,9 @@ func maxLiquidityForAmount0Imprecise(sqrtRatioAX96, sqrtRatioBX96, amount0 *big.
 	if sqrtRatioAX96.Cmp(sqrtRatioBX96) > 0 {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
-	intermediate := new(big.Int).Div(new(big.Int).Mul(sqrtRatioAX96, sqrtRatioBX96), constants.Q96)
-	return new(big.Int).Div(new(big.Int).Mul(amount0, intermediate), new(big.Int).Sub(sqrtRatioBX96, sqrtRatioAX96))
+	temp := new(big.Int).Mul(sqrtRatioAX96, sqrtRatioBX96)
+	intermediate := temp.Div(temp, constants.Q96)
+	return new(big.Int).Div(intermediate.Mul(amount0, intermediate), new(big.Int).Sub(sqrtRatioBX96, sqrtRatioAX96))
 }
 
 /**
@@ -37,8 +38,9 @@ func maxLiquidityForAmount0Precise(sqrtRatioAX96, sqrtRatioBX96, amount0 *big.In
 	if sqrtRatioAX96.Cmp(sqrtRatioBX96) > 0 {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
-	numerator := new(big.Int).Mul(new(big.Int).Mul(amount0, sqrtRatioAX96), sqrtRatioBX96)
-	denominator := new(big.Int).Mul(constants.Q96, new(big.Int).Sub(sqrtRatioBX96, sqrtRatioAX96))
+	temp := new(big.Int).Mul(amount0, sqrtRatioAX96)
+	numerator := temp.Mul(temp, sqrtRatioBX96)
+	denominator := sqrtRatioBX96.Mul(constants.Q96, sqrtRatioBX96.Sub(sqrtRatioBX96, sqrtRatioAX96))
 	return new(big.Int).Div(numerator, denominator)
 }
 
@@ -53,7 +55,8 @@ func maxLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1 *big.Int) *big
 	if sqrtRatioAX96.Cmp(sqrtRatioBX96) > 0 {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
-	return new(big.Int).Div(new(big.Int).Mul(amount1, constants.Q96), new(big.Int).Sub(sqrtRatioBX96, sqrtRatioAX96))
+	temp := new(big.Int).Mul(amount1, constants.Q96)
+	return temp.Div(temp, new(big.Int).Sub(sqrtRatioBX96, sqrtRatioAX96))
 }
 
 /**

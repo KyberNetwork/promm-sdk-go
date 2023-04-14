@@ -4,6 +4,8 @@ import (
 	"errors"
 	"math"
 	"math/big"
+
+	"github.com/KyberNetwork/promm-sdk-go/constants"
 )
 
 const (
@@ -43,7 +45,7 @@ func ValidateList(ticks []Tick, tickSpacing int) error {
 	for _, tick := range ticks {
 		sum.Add(sum, tick.LiquidityNet)
 	}
-	if sum.Cmp(big.NewInt(0)) != 0 {
+	if sum.Cmp(constants.Zero) != 0 {
 		return ErrZeroNet
 	}
 

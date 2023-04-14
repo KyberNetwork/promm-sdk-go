@@ -11,6 +11,6 @@ import "math/big"
 func EncodeSqrtRatioX96(amount1 *big.Int, amount0 *big.Int) *big.Int {
 	numerator := new(big.Int).Lsh(amount1, 192)
 	denominator := amount0
-	ratioX192 := new(big.Int).Div(numerator, denominator)
-	return new(big.Int).Sqrt(ratioX192)
+	numerator.Div(numerator, denominator)
+	return numerator.Sqrt(numerator)
 }
